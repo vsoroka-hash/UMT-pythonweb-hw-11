@@ -1,0 +1,36 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.config import settings
+from app.database import Base, engine
+from app.routes.auth import router as auth_router
+from app.routes.contacts import router as contacts_router
+from app.routes.users import router as users_router
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
+app = FastAPI(title="Contacts API with Auth", version="2.0.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.get_cors_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth_router, prefix="/api")
+app.include_router(users_router, prefix="/api")
+app.include_router(contacts_router, prefix="/api")
+
+
+@app.get("/")
+def read_root():
+    return {"message": "Contacts API with authentication is running"}
